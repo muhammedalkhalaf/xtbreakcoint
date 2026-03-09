@@ -142,8 +142,7 @@ for (i in 1:N) {
 result <- xtbreakcoint(y ~ x, data = panel_data, id = "id", time = "time")
 print(result)
 }
-\author{
-Dr Merwan Roudane \email{merwanroudane920@gmail.com}
+\author{Muhammad Alkhalaf}
 
 Based on original GAUSS code by A. Banerjee and J.L. Carrion-i-Silvestre.
 }

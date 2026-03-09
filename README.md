@@ -1,7 +1,6 @@
 # xtbreakcoint
 
 <!-- badges: start -->
-[![R-CMD-check](https://github.com/merwanroudane/xtbreakcoint/workflows/R-CMD-check/badge.svg)](https://github.com/merwanroudane/xtbreakcoint/actions)
 [![CRAN status](https://www.r-pkg.org/badges/version/xtbreakcoint)](https://CRAN.R-project.org/package=xtbreakcoint)
 <!-- badges: end -->
 
@@ -15,7 +14,6 @@ You can install the development version from GitHub:
 
 ```r
 # install.packages("devtools")
-devtools::install_github("merwanroudane/xtbreakcoint")
 ```
 
 ## Overview
@@ -93,8 +91,6 @@ print(result)
   [doi:10.1111/1468-0262.00273](https://doi.org/10.1111/1468-0262.00273)
 
 ## Author
-
-Dr Merwan Roudane ([merwanroudane920@gmail.com](mailto:merwanroudane920@gmail.com))
 
 Based on original GAUSS code by A. Banerjee and J.L. Carrion-i-Silvestre.
 
