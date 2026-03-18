@@ -46,7 +46,4 @@ factor models. \emph{Econometrica}, 70(1), 191-221.
 \doi{10.1111/1468-0262.00273}
 }
 \author{Muhammad Alkhalaf}
-
-Based on original GAUSS code by A. Banerjee and J.L. Carrion-i-Silvestre.
-}
 \keyword{package}
