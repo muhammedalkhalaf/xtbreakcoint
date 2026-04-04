@@ -1,0 +1,14 @@
+﻿citHeader("To cite xtbreakcoint in publications use:")
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "Panel Cointegration Tests with Structural Breaks",
+  author   = person("Muhammad Abdullah", "Alkhalaf",
+               email = "muhammedalkhalaf@gmail.com",
+               role  = c("aut", "cre"),
+               comment = c(ORCID = "0009-0002-2677-9246")),
+  year     = "2026",
+  note     = "R package version 1.0.4",
+  url      = "https://CRAN.R-project.org/package=xtbreakcoint",
+  doi      = "10.32614/CRAN.package.xtbreakcoint"
+)
