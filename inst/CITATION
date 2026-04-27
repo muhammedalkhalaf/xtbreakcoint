@@ -1,4 +1,4 @@
-﻿citHeader("To cite xtbreakcoint in publications use:")
+citHeader("To cite xtbreakcoint in publications use:")
 
 bibentry(
   bibtype  = "Manual",
