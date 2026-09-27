@@ -19,7 +19,7 @@ Initial CRAN release.
 
 * Banerjee, A., & Carrion-i-Silvestre, J. L. (2015). Cointegration in panel
   data with structural breaks and cross-section dependence. *Journal of
-  Applied Econometrics*, 30(1), 1-22. doi:10.1002/jae.2431
+  Applied Econometrics*, 30(1), 1-22. doi:10.1002/jae.2348
 
 * Bai, J., & Ng, S. (2004). A PANIC attack on unit roots and cointegration.
-  *Econometrica*, 72(4), 1127-1177. doi:10.1111/j.1468-0262.2004.00496.x
+  *Econometrica*, 72(4), 1127-1177. doi:10.1111/j.1468-0262.2004.00528.x
