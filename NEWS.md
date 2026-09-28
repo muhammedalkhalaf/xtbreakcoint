@@ -1,3 +1,7 @@
+# xtbreakcoint 1.0.5
+
+* Corrected two DOIs in NEWS.md: Banerjee and Carrion-i-Silvestre (2015) is 10.1002/jae.2348 and Bai and Ng (2004) is 10.1111/j.1468-0262.2004.00528.x. No changes to code.
+
 # xtbreakcoint 1.0.1
 
 Initial CRAN release.
