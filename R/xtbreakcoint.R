@@ -11,6 +11,16 @@
 #'
 #' 1. **Iterative Factor-Break Estimation**: Jointly estimates common factors
 #'    and individual break dates using an iterative procedure.
+#'
+#' The computations follow the authors' GAUSS replication code (procedures
+#' `factcoint_iter`, `factcoint`, `ADFRC` and `MQ_test`): the cointegrating
+#' regression is estimated unit by unit in first differences, break dates
+#' minimise the sum of squared residuals over the central 70\% of the sample
+#' (a common break for model 5), the number of factors is chosen by the
+#' Bai and Ng (2002) IC1 criterion, and the ADF regressions on the cumulated
+#' idiosyncratic residuals have no deterministic terms. The GAUSS code selects
+#' the model 4 break by minimising the squared coefficient vector; this
+#' package uses the sum of squared residuals, as for the other models.
 #' 2. **Individual ADF Tests**: Applies ADF tests to the defactored
 #'    (idiosyncratic) residuals for each cross-section unit.
 #' 3. **Panel Test Statistic**: Combines individual ADF statistics into a
@@ -39,8 +49,9 @@
 #' @param max_factors Maximum number of common factors to estimate (default: 5).
 #'   Set to 0 to skip factor estimation.
 #' @param max_lag Maximum lag order for ADF tests (default: 4).
-#' @param lag_method Method for selecting ADF lag order: `"auto"` for automatic
-#'   selection via BIC (default) or `"fixed"` to use `max_lag`.
+#' @param lag_method Method for selecting ADF lag order: `"auto"` (default)
+#'   starts from `max_lag` and drops the last lag while its t-ratio is below
+#'   1.645 in absolute value, as in the GAUSS code; `"fixed"` uses `max_lag`.
 #' @param trim Trimming parameter for break estimation, proportion of sample
 #'   excluded from endpoints (default: 0.15). Must be in (0, 0.5).
 #' @param max_iter Maximum iterations for factor-break estimation (default: 20).
@@ -107,6 +118,7 @@
 #' result <- xtbreakcoint(y ~ x, data = panel_data, id = "id", time = "time")
 #' print(result)
 #'
+#' @importFrom stats model.frame na.pass pnorm
 #' @export
 xtbreakcoint <- function(formula, data, id, time,
                          model = "trendshift",
@@ -189,96 +201,62 @@ xtbreakcoint <- function(formula, data, id, time,
   var_t <- moments$var
   moments_depend_on_lambda <- moments$lambda_dependent
   
-  # ---- Step 1: Iterative Factor-Break Estimation ----
-  factor_result <- .factcoint_iter(
-    data = data,
-    depvar = depvar,
-    indepvars = indepvars,
-    id = id,
-    time = time,
-    model = model_num,
-    max_factors = max_factors,
-    trim = trim,
-    max_iter = max_iter,
-    tolerance = tolerance
-  )
-  
-  n_factors <- factor_result$n_factors
-  n_iters <- factor_result$iterations
-  final_ssr <- factor_result$ssr
-  Dres <- factor_result$Dres  # First-differenced idiosyncratic residuals (T-1 x N)
-  Fhat <- factor_result$Fhat  # Estimated factors (T-1 x n_factors)
-  breaks <- factor_result$breaks  # Break dates (N x 1)
-  
+  # ---- Step 1: Iterative factor-break estimation (GAUSS factcoint_iter) ----
+  wide <- function(v) {
+    sapply(panels, function(p) data[[v]][data[[id]] == p])
+  }
+  Y <- wide(depvar)
+  Xl <- lapply(indepvars, wide)
+  fr <- .bcs_factcoint_iter(Y, Xl, model_num, kmax = max_factors,
+                            tolerance = tolerance, max_iter = max_iter,
+                            trim = trim)
+  n_factors <- fr$r
+  n_iters <- fr$iterations
+  breaks <- fr$m_tbe
+
   # ---- Model 5: Lambda-dependent moments ----
   if (model_num == 5 && moments_depend_on_lambda) {
-    # Use the common break point
     lambda <- breaks[1] / Tobs
     new_moments <- .get_lambda_moments(lambda)
     mean_t <- new_moments$mean
     var_t <- new_moments$var
   }
-  
-  # ---- Step 2: Individual ADF Tests ----
-  adf_stats <- numeric(N)
-  lag_orders <- integer(N)
-  
+
+  # ---- Step 2: Individual ADF tests on the idiosyncratic components ----
   method_num <- if (lag_method == "auto") 1 else 0
-  
-  for (i in seq_len(N)) {
-    # Cumulate first-differenced residuals to get levels
-    # GAUSS: e = cumsumc(De)
-    resid_levels <- cumsum(Dres[, i])
-    
-    # ADF test on levels
-    adf_result <- .adfrc(resid_levels, method = method_num, p_max = max_lag)
-    
-    adf_stats[i] <- adf_result$t_adf
-    lag_orders[i] <- adf_result$p_sel
-  }
-  
-  # ---- Step 3: Panel Test Statistic ----
-  # GAUSS formula:
-  # test_t = (N^(-1/2)*sumc(m_adf) - mean_t*sqrt(N)) / sqrt(var_t)
-  # = sqrt(N)*(tbar - mean_t) / sqrt(var_t)
-  
-  valid_adf <- adf_stats[!is.na(adf_stats)]
-  n_valid <- length(valid_adf)
-  
-  if (n_valid == 0) {
-    stop("No valid ADF statistics computed")
-  }
-  
-  tbar <- mean(valid_adf)
-  Z_t <- sqrt(n_valid) * (tbar - mean_t) / sqrt(var_t)
-  p_value <- stats::pnorm(Z_t)  # One-sided (left tail)
-  
-  # Rejection rate at 5% (GAUSS: meanc(m_adf .lt -1.95))
-  n_reject <- sum(valid_adf < -1.95)
-  reject_pct <- 100 * n_reject / n_valid
-  
-  # ---- Step 4: MQ Test for Stochastic Trends ----
-  n_trends <- 0
+  adf <- lapply(seq_len(N), function(i) .bcs_adfrc(fr$e[, i], method_num, max_lag))
+  adf_stats <- vapply(adf, function(a) a$t_adf, numeric(1))
+  lag_orders <- vapply(adf, function(a) as.integer(a$p), integer(1))
+
+  # ---- Step 3: Panel statistic ----
+  tbar <- mean(adf_stats)
+  Z_t <- sqrt(N) * (tbar - mean_t) / sqrt(var_t)
+  p_value <- stats::pnorm(Z_t)  # left tail
+  reject_pct <- 100 * mean(adf_stats < -1.95)
+
+  # ---- Step 4: MQ tests for common stochastic trends ----
+  n_trends <- 0L
+  n_trends_p <- 0L
   MQ_np <- NA_real_
-  n_trends_p <- 0
   MQ_p <- NA_real_
   Fhat_cumul <- NULL
-  
   if (n_factors > 0) {
-    # Cumulate Fhat from first diffs to levels
-    Fhat_cumul <- apply(Fhat, 2, cumsum)
-    
-    # Non-parametric MQ test
-    mq_result_np <- .mq_test(Fhat_cumul, model_num, N, parametric = FALSE)
-    MQ_np <- mq_result_np$MQ
-    n_trends <- mq_result_np$n_trends
-    
-    # Parametric MQ test
-    mq_result_p <- .mq_test(Fhat_cumul, model_num, N, parametric = TRUE)
-    MQ_p <- mq_result_p$MQ
-    n_trends_p <- mq_result_p$n_trends
+    Fd <- fr$Fhat
+    if (model_num %in% c(1, 3)) {
+      Fd <- sweep(Fd, 2, colMeans(Fd))
+    } else if (model_num %in% c(2, 4)) {
+      tt <- cbind(1, seq_len(nrow(Fd)))
+      Fd <- qr.resid(qr(tt), Fd)
+    }
+    Fhat_cumul <- Fd
+    mq_np <- .bcs_mq(Fd, model_num, N, parametric = FALSE)
+    mq_p <- .bcs_mq(Fd, model_num, N, parametric = TRUE)
+    MQ_np <- mq_np$MQ
+    n_trends <- mq_np$n_trends
+    MQ_p <- mq_p$MQ
+    n_trends_p <- mq_p$n_trends
   }
-  
+
   # ---- Build result object ----
   result <- list(
     Z_t = Z_t,
@@ -399,7 +377,7 @@ summary.xtbreakcoint <- function(object, ...) {
   
   for (i in seq_along(x$panels)) {
     brk <- x$breaks[i]
-    brk_str <- if (brk > 0) as.character(brk + x$Tmin) else "---"
+    brk_str <- if (brk > 0) as.character(brk + x$Tmin - 1) else "---"
     cat(sprintf("%12s  %10.4f  %8d  %10s\n",
                 as.character(x$panels[i]),
                 x$adf_stats[i],

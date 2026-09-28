@@ -44,9 +44,10 @@ Set to 0 to skip factor estimation.}
 
 \item{max_lag}{Maximum lag order for ADF tests (default: 4).}
 
-\item{lag_method}{Method for selecting ADF lag order: \code{"auto"} for
-automatic selection via BIC (default) or \code{"fixed"} to use
-\code{max_lag}.}
+\item{lag_method}{Method for selecting ADF lag order: \code{"auto"}
+(default) starts from \code{max_lag} and drops the last lag while its
+t-ratio is below 1.645 in absolute value, as in the GAUSS code;
+\code{"fixed"} uses \code{max_lag}.}
 
 \item{trim}{Trimming parameter for break estimation, proportion of sample
 excluded from endpoints (default: 0.15). Must be in (0, 0.5).}
@@ -94,6 +95,17 @@ breaks and cross-sectional dependence. The methodology follows these steps:
   \item \strong{MQ Test}: If factors are detected, tests whether they are
     stationary or represent stochastic trends (Bai & Ng, 2004).
 }
+
+The computations follow the authors' GAUSS replication code (procedures
+\code{factcoint_iter}, \code{factcoint}, \code{ADFRC} and \code{MQ_test}):
+the cointegrating regression is estimated unit by unit in first
+differences, break dates minimise the sum of squared residuals over the
+central 70\% of the sample (a common break for model 5), the number of
+factors is chosen by the Bai and Ng (2002) IC1 criterion, and the ADF
+regressions on the cumulated idiosyncratic residuals have no deterministic
+terms. The GAUSS code selects the model 4 break by minimising the squared
+coefficient vector; this package uses the sum of squared residuals, as for
+the other models.
 }
 \section{Model Specifications}{
 \describe{
